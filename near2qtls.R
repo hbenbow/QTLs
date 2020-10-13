@@ -1,21 +1,20 @@
 library(grid)
 library(gridExtra)
 library(tidyr)
-library(dplyr)
 library(plyr)
+library(dplyr)
 library(ggplot2)
 
-setwd("~/Documents/Hotspots/Paper_version_4/QTLs/")
-Fg_final <- read.csv("~/Documents/Hotspots/Paper_version_4/Fg_final.csv")
-all_markers_positions <- read.csv("~/Documents/Hotspots/Paper_version_4/all_markers_positions.csv", row.names=1)
-final_hotspots <- read.csv("~/Documents/Hotspots/Paper_version_4/final_hotspots.csv")
-QTL_database <- read.csv("~/Documents/Hotspots/Paper_version_4/QTLs/QTL_database.csv")
+# Read in the QTL data with the markers
+setwd("~/Documents/InnoVar/QTLs/QTL_data/")
+all_markers_positions <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/all_markers_positions.csv", row.names=1)
+QTL_database <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/FHB/QTL_database.csv")
 QTL_database$Chromosomes<-paste("chr", QTL_database$Chromosomes, sep="")
 
 
 # check how many qtl markers are present in the marker database file, and check location of them
 qtl_indb<-subset(all_markers_positions, all_markers_positions$Feature %in% QTL_database$Linked.markers)
-write.csv(qtl_indb, file="~/Documents/Hotspots/Paper_version_4/QTLs/available_markers.csv")
+write.csv(qtl_indb, file="~/Documents/InnoVar/QTLs/QTL_data/FHB/available_markers.csv")
 
 # ========================================================================================================================================
 # this chunk will identify markers that have multiple hits on the same chromosome
@@ -37,21 +36,28 @@ for(marker in qtl_indb$Feature){
 mismatches<-do.call(rbind.data.frame, list)
 mismatches<-as.data.frame(unique(mismatches[,1]))
 mismatches<-subset(all_markers_positions, all_markers_positions$Feature %in% mismatches[,1])
-write.csv(mismatches, file="~/Documents/Hotspots/Paper_version_4/QTLs/mismatches.csv")
+write.csv(mismatches, file="~/Documents/InnoVar/QTLs/QTL_data/mismatches.csv")
 
 # ========================================================================================================================================
-# this section makes a new file that has no mismatches (i.e. markers that have multipe hits on the same chromosome)
+# this section makes a new file that has no mismatches (i.e. markers that have multiple hits on the same chromosome)
 
 all_markers_positions$ID<-paste(all_markers_positions$Chromosome, all_markers_positions$Start, all_markers_positions$Feature)
 no_dups<-all_markers_positions[!(duplicated(all_markers_positions$ID)),]
 no_dups$ID<-paste(no_dups$Chromosome, no_dups$Feature)
 no_dups<-no_dups[!(duplicated(no_dups$ID)),]
 all_markers_positions_filtered<-no_dups
-write.csv(all_markers_positions_filtered, file="~/Documents/Hotspots/Paper_version_4/all_markers_positions_filtered.csv")
+write.csv(all_markers_positions_filtered, file="~/Documents/InnoVar/QTLs/QTL_data/all_markers_positions_filtered.csv")
 
 qtl_indb_filtered<-subset(all_markers_positions_filtered, all_markers_positions_filtered$Feature %in% QTL_database$Linked.markers)
 
 # ========================================================================================================================================
+exp_data<-read.csv("~/Documents/InnoVar/QTLs/Expression_data/RES_ERP003465_Fg.csv")
+wheat_bed<-read.csv("~/Documents/InnoVar/QTLs/QTL_data/wheat_all.csv")
+colnames(wheat_bed)<-c( "Chromosome", "start", "end", "GeneID","Score", "strand")
+
+exp_data<-exp_data%>% separate(Gene, into = c("Gene", "Variant"), sep="[.]", extra = "merge", fill = "left")
+exp_data2<-merge(exp_data, wheat_bed, by.x="Gene", by.y="GeneID")
+
 qtls_clusters<-list()
 all_qtls<-list()
 qtls<-QTL_database$General.number
@@ -63,7 +69,7 @@ for(qtl in qtls){
     chr<-data$Chromosomes
     position<-subset(all_markers_positions_filtered, all_markers_positions_filtered$Chromosome %in% chr)
     position<-subset(position, position$Feature %in% i)
-    clusters<-subset(final_hotspots, final_hotspots$Chromosome %in% chr)
+    clusters<-subset(exp_data2, exp_data2$Chromosome %in% chr)
     len<-nrow(clusters)
     lenp<-nrow(position)
     if(lenp>0 && len>0){
@@ -81,7 +87,7 @@ for(qtl in qtls){
 
 qtls_clusters<-do.call(rbind.data.frame, qtls_clusters)
 qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position))/1000000
-write.csv(qtls_clusters, file="~/Documents/Hotspots/Paper_version_4/QTLs/qtls_and_clusters.csv")
+write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/FHB/ERP003465_Fg_QTLs.csv")
 
 # ====================================================================================================================
 # A histogram of distance between QTLs and FRGCs
@@ -98,31 +104,32 @@ quantile(qtls_clusters$Difference, probs = c(0.01, 0.02, 0.05))
 
 threshold<-5
 data<-qtls_clusters[(qtls_clusters$Difference<=threshold),]
-write.csv(data, file="~/Documents/Hotspots/Paper_version_4/QTLs/qtls_lessthat_5mbp.csv")
+write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/FHB/ERP003465_Fg_QTLs_less_that_5mbp.csv")
 
-for(marker in data$marker){
-  newdata<-data[(data$marker==marker),]
-  min<-min(newdata$marker_position) - 5000000
-  max<-max(newdata$marker_position) + 5000000
-  chr<-as.character(unique(newdata$Chromosome))
-  
-  df<-Fg_final[(Fg_final$Chromosome==chr),]
-  df<-df[(df$start>=min),]
-  df<-df[(df$end<=max),]
-  markers<-qtls_clusters[(qtls_clusters$Chromosome==chr),]
-  markers<-markers[(markers$marker_position>=min),]
-  markers<-markers[(markers$marker_position<=max),]
-  
-  ggplot(df, aes(x=end, y=density)) +
-    geom_jitter(size=3, aes(colour=Colour), alpha=0.6) +
-    xlab("Position (bp)") + 
-    ylab("Gene Density") + theme_bw() +
-    theme(text = element_text(size=16, colour="black")) +
-    scale_color_manual( values=c("grey60", "orangered2")) +
-    # coord_cartesian(ylim=c(0,1), xlim=c(min, max))
-    geom_vline(data =markers, aes(xintercept=marker_position), colour="green")+
-    ggtitle(paste(chr))
-}
+# for(marker in data$marker){
+#   newdata<-data[(data$marker==marker),]
+#   newdata$marker_position<-as.numeric(newdata$marker_position)
+#   min<-min(newdata$marker_position) - 5000000
+#   max<-max(newdata$marker_position) + 5000000
+#   chr<-as.character(unique(newdata$Chromosome))
+#   
+#   df<-Fg_final[(Fg_final$Chromosome==chr),]
+#   df<-df[(df$start>=min),]
+#   df<-df[(df$end<=max),]
+#   markers<-qtls_clusters[(qtls_clusters$Chromosome==chr),]
+#   markers<-markers[(markers$marker_position>=min),]
+#   markers<-markers[(markers$marker_position<=max),]
+#   
+#   ggplot(df, aes(x=end, y=density)) +
+#     geom_jitter(size=3, aes(colour=Colour), alpha=0.6) +
+#     xlab("Position (bp)") + 
+#     ylab("Gene Density") + theme_bw() +
+#     theme(text = element_text(size=16, colour="black")) +
+#     scale_color_manual( values=c("grey60", "orangered2")) +
+#     # coord_cartesian(ylim=c(0,1), xlim=c(min, max))
+#     geom_vline(data =markers, aes(xintercept=marker_position), colour="green")+
+#     ggtitle(paste(chr))
+# }
 
 data = qtls_clusters[(qtls_clusters$Chromosome=="chr2D"),]
 data<-data[,c(14,15)]
