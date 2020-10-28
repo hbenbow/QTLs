@@ -109,8 +109,11 @@ for(qtl in qtls){
 }
 
 qtls_clusters<-do.call(rbind.data.frame, qtls_clusters)
-qtls_clusters$Within<-
-  qtls_clusters %>% case_when()
+qtls_clusters$start<-as.numeric(qtls_clusters$start)
+qtls_clusters$end<-as.numeric(qtls_clusters$end)
+qtls_clusters$marker_position<-as.numeric(qtls_clusters$marker_position)
+qtls_clusters<- qtls_clusters %>%
+  mutate(within = case_when(marker_position < end & marker_position > start ~ "Within", marker_position > end & marker_position < start ~ "Within"))
 qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position))
 write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/Fg_DEGs_QTLs.csv")
 
@@ -127,6 +130,10 @@ ggplot(qtls_clusters, aes(x=Difference)) +
 # identify percentiles
 quantile(qtls_clusters$Difference, probs = c(0.001, 0.02, 0.05))
 summary(qtls_clusters$Difference)
+
+# lets see those where the qtl marker is within a DEG
+withins<-qtls_clusters[(qtls_clusters$within=="Within"),]
+withins<-na.omit(withins)
 # lets examine qtls that are <5 mbp from a FRGC
 
 threshold<-5
