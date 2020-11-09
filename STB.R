@@ -115,8 +115,8 @@ qtls_clusters$end<-as.numeric(qtls_clusters$end)
 qtls_clusters$marker_position<-as.numeric(qtls_clusters$marker_position)
 qtls_clusters<- qtls_clusters %>%
   mutate(within = case_when(marker_position < end & marker_position > start ~ "Within", marker_position > end & marker_position < start ~ "Within"))
-qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position))
-write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/Fg_DEGs_QTLs.csv")
+qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position)) /1000000
+write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/STB/STB_DEGs_QTLs.csv")
 
 # ====================================================================================================================
 # A histogram of distance between QTLs and FRGCs
@@ -138,8 +138,8 @@ withins<-qtls_clusters[(qtls_clusters$within=="Within"),]
 withins<-na.omit(withins)
 # lets examine qtls that are <5 mbp from a FRGC
 
-threshold<-2.9
-data<-qtls_clusters[(qtls_clusters$Difference<=2951501),]
+threshold<-q[1]
+data<-qtls_clusters[(qtls_clusters$Difference<=threshold),]
 
 ggplot(data, aes(x=Difference)) + 
   geom_histogram(binwidth=20, fill="grey60", colour="black") +
@@ -148,7 +148,5 @@ ggplot(data, aes(x=Difference)) +
   xlab("Distance between DEG and QTL markers")
 
 
-write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/ERP003465_Fg_QTLs_less_that_1kb.csv")
+write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/STB/STB_QTLs_less_that_1%kb.csv")
 
-
-setwd(paste("~/Documents/InnoVar/QTLs/QTL_data/"), disease)
