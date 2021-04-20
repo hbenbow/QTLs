@@ -8,13 +8,13 @@ library(dplyr)
 library(ggplot2)
 
 # Read in all files
-setwd("~/Documents/InnoVar/QTLs/QTL_data/")
-all_markers_positions <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/all_markers_positions.csv", row.names=1)
-QTL_database <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/Fg/QTL_database.csv")
+setwd("~/Documents/InnoVar/QTLs/QTL_data/Fg/")
+all_markers_positions <- read.csv("~/Documents/InnoVar/QTLs/marker_positions/all_markers_positions.csv", row.names=1)
+QTL_database <- read.csv("QTL_database.csv")
 QTL_database$Chromosomes<-paste("chr", QTL_database$Chromosomes, sep="")
 
 qtl_indb<-subset(all_markers_positions, all_markers_positions$Feature %in% QTL_database$Linked.markers)
-write.csv(qtl_indb, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/available_markers.csv")
+write.csv(qtl_indb, file="available_markers.csv")
 
 disease="Fg" # change here to say which disease you want to analyse
 
@@ -114,10 +114,15 @@ qtls_clusters$end<-as.numeric(qtls_clusters$end)
 qtls_clusters$marker_position<-as.numeric(qtls_clusters$marker_position)
 qtls_clusters<- qtls_clusters %>%
   mutate(within = case_when(marker_position < end & marker_position > start ~ "Within", marker_position > end & marker_position < start ~ "Within"))
-qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position))
+qtls_clusters$Difference<-abs(as.numeric(qtls_clusters$start) - as.numeric(qtls_clusters$marker_position))/1000000
 write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/Fg_DEGs_QTLs.csv")
 
 # ====================================================================================================================
+
+# identify percentiles
+q<-quantile(qtls_clusters$Difference, probs = c(0.01,0.05, 0.02, 0.05))
+q
+summary(qtls_clusters$Difference)
 # A histogram of distance between QTLs and FRGCs
 
 ggplot(qtls_clusters, aes(x=Difference)) + 
@@ -127,17 +132,15 @@ ggplot(qtls_clusters, aes(x=Difference)) +
   xlab("Distance between DEG and QTL markers (Mbp)") +
   geom_vline(aes(xintercept=q[1]), colour="firebrick")
 
-# identify percentiles
-quantile(qtls_clusters$Difference, probs = c(0.001, 0.02, 0.05))
-summary(qtls_clusters$Difference)
+
 
 # lets see those where the qtl marker is within a DEG
 withins<-qtls_clusters[(qtls_clusters$within=="Within"),]
 withins<-na.omit(withins)
 # lets examine qtls that are <5 mbp from a FRGC
 
-threshold<-5
-data<-qtls_clusters[(qtls_clusters$Difference<=1000),]
+threshold<-q[1]
+data<-qtls_clusters[(qtls_clusters$Difference<=threshold),]
 
 ggplot(data, aes(x=Difference)) + 
   geom_histogram(binwidth=20, fill="grey60", colour="black") +
@@ -146,7 +149,7 @@ ggplot(data, aes(x=Difference)) +
   xlab("Distance between DEG and QTL markers")
 
 
-write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/ERP003465_Fg_QTLs_less_that_1kb.csv")
+write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/Fg/ERP003465_Fg_QTLs_less_than_2.5.csv")
 
 
 setwd(paste("~/Documents/InnoVar/QTLs/QTL_data/"), disease)

@@ -6,10 +6,11 @@ library(tidyr)
 library(plyr)
 library(dplyr)
 library(ggplot2)
+library(knitr)
 
 # Read in all files
 setwd("~/Documents/InnoVar/QTLs/QTL_data/")
-all_markers_positions <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/all_markers_positions.csv", row.names=1)
+all_markers_positions <- read.csv("~/Documents/InnoVar/QTLs/marker_positions/all_markers_positions.csv", row.names=1)
 QTL_database <- read.csv("~/Documents/InnoVar/QTLs/QTL_data/STB/QTL_database.csv")
 QTL_database$Chromosome<-paste("chr", QTL_database$Chromosome, sep="")
 
@@ -120,7 +121,7 @@ write.csv(qtls_clusters, file="~/Documents/InnoVar/QTLs/QTL_data/STB/STB_DEGs_QT
 
 # ====================================================================================================================
 # A histogram of distance between QTLs and FRGCs
-q<-quantile(qtls_clusters$Difference, probs = c(0.01, 0.02, 0.05))
+q<-quantile(qtls_clusters$Difference, probs = c(0.01,0.05, 0.02, 0.05))
 q
 summary(qtls_clusters$Difference)
 
@@ -130,7 +131,7 @@ ggplot(qtls_clusters, aes(x=Difference)) +
   theme_classic()+
   theme(text = element_text(size=20, colour="black")) +
   xlab("Distance between DEG and QTL markers (Mbp)") +
-  geom_vline(aes(xintercept=q[1]), colour="firebrick")
+  geom_vline(aes(xintercept=q[2]), colour="firebrick", size=1)
 
 
 # lets see those where the qtl marker is within a DEG
@@ -140,6 +141,7 @@ withins<-na.omit(withins)
 
 threshold<-q[1]
 data<-qtls_clusters[(qtls_clusters$Difference<=threshold),]
+kable(table(data$row))
 
 ggplot(data, aes(x=Difference)) + 
   geom_histogram(binwidth=20, fill="grey60", colour="black") +
@@ -148,5 +150,5 @@ ggplot(data, aes(x=Difference)) +
   xlab("Distance between DEG and QTL markers")
 
 
-write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/STB/STB_QTLs_less_that_1%kb.csv")
+write.csv(data, file="~/Documents/InnoVar/QTLs/QTL_data/STB/STB_QTLs_less_than_2.05.csv")
 
